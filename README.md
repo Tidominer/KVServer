@@ -228,12 +228,23 @@ Import is idempotent — existing keys are updated, new keys are created. A summ
 
 ## Building for Production (Linux x64)
 
-```bash
-dotnet publish KVServer.Api  -c Release -r linux-x64 --self-contained
-dotnet publish KVServer.Cli  -c Release -r linux-x64 --self-contained
-```
+Two PowerShell build scripts are provided. Both produce `kvserver` and `kvserver-cli` binaries under `builds/`, along with `wwwroot/` and `appsettings.json`.
 
-Outputs will be in each project's `bin/Release/net10.0/linux-x64/publish/`.
+| Script | Target machine requirement |
+|---|---|
+| `build-linux-x64.ps1` | .NET 10 runtime must be installed |
+| `build-linux-x64-fdd.ps1` | None — runtime is bundled (larger output) |
+
+```powershell
+# Framework-dependent (smaller, requires .NET 10 on the server)
+.\build-linux-x64.ps1
+
+# Self-contained (larger, no runtime needed on the server)
+.\build-linux-x64-fdd.ps1
+
+# Either script accepts -Zip to produce a publish.zip archive
+.\build-linux-x64.ps1 -Zip
+```
 
 ## License
 
