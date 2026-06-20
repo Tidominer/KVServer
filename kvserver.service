@@ -1,0 +1,31 @@
+[Unit]
+Description=KVServer key-value store
+After=network.target
+
+[Service]
+Type=simple
+User=kvserver
+Group=kvserver
+WorkingDirectory=/opt/kvserver
+ExecStart=/opt/kvserver/kvserver
+Restart=always
+RestartSec=5
+
+# Override any Server settings from appsettings.json via environment variables.
+# Uncomment and edit as needed:
+#Environment=KVSERVER_Server__Port=5205
+#Environment=KVSERVER_Server__Bind=127.0.0.1
+#Environment=KVSERVER_Server__DbPath=/var/lib/kvserver/kvserver.db
+#Environment=KVSERVER_Server__NoWeb=false
+#Environment=KVSERVER_Server__ReadOnly=false
+#Environment=KVSERVER_Server__LogLevel=Warning
+
+# Or point to a file containing KEY=VALUE pairs (one per line):
+#EnvironmentFile=/etc/kvserver/env
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=kvserver
+
+[Install]
+WantedBy=multi-user.target

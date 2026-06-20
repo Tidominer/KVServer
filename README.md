@@ -232,21 +232,70 @@ Two PowerShell build scripts are provided. Both produce `kvserver` and `kvserver
 
 | Script | Target machine requirement |
 |---|---|
-| `build-linux-x64.ps1` | .NET 10 runtime must be installed |
-| `build-linux-x64-fdd.ps1` | None — runtime is bundled (larger output) |
+| `build-linux-x64-fdd.ps1` | .NET 10 runtime must be installed |
+| `build-linux-x64-self-contained.ps1` | None — runtime is bundled (larger output) |
 
 ```powershell
 # Framework-dependent (smaller, requires .NET 10 on the server)
-.\build-linux-x64.ps1
-
-# Self-contained (larger, no runtime needed on the server)
 .\build-linux-x64-fdd.ps1
 
+# Self-contained (larger, no runtime needed on the server)
+.\build-linux-x64-self-contained.ps1
+
 # Either script accepts -Zip to produce a publish.zip archive
-.\build-linux-x64.ps1 -Zip
+.\build-linux-x64-fdd.ps1 -Zip
 ```
 
+Both scripts output to `builds/` and include `kvserver`, `kvserver-cli`, `wwwroot/`, `appsettings.json`, and `kvserver.service`.
+
 > **Note:** A plain `dotnet publish` produces binaries named `KVServer.Api` and `KVServer.Cli`. The build scripts rename them to `kvserver` and `kvserver-cli`.
+
+## Running as a systemd Service (Linux)
+
+A `kvserver.service` unit file is included in every build output.
+
+**1. Create a dedicated user and deploy the files:**
+
+```bash
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin kvserver
+sudo mkdir -p /opt/kvserver
+sudo cp -r builds/kvserver\ linux-x64/* /opt/kvserver/
+sudo chown -R kvserver:kvserver /opt/kvserver
+sudo chmod +x /opt/kvserver/kvserver /opt/kvserver/kvserver-cli
+```
+
+**2. Install and start the service:**
+
+```bash
+sudo cp /opt/kvserver/kvserver.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable kvserver
+sudo systemctl start kvserver
+sudo systemctl status kvserver
+```
+
+**3. View logs:**
+
+```bash
+journalctl -u kvserver -f
+```
+
+**Configuration via environment variables:**
+
+Rather than editing `appsettings.json` on the server, uncomment and set the `Environment=` lines in the unit file before installing:
+
+```ini
+Environment=KVSERVER_Server__DbPath=/var/lib/kvserver/kvserver.db
+Environment=KVSERVER_Server__Bind=127.0.0.1
+Environment=KVSERVER_Server__Port=5205
+```
+
+After any change to the unit file:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart kvserver
+```
 
 ## License
 

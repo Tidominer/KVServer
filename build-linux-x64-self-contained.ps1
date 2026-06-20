@@ -53,6 +53,9 @@ Copy-Item "$tmpApi\wwwroot" "$out\wwwroot" -Recurse
 # appsettings.json — source file only (no Development variant)
 Copy-Item "$root\KVServer.Api\appsettings.json" "$out\appsettings.json"
 
+# systemd unit file
+Copy-Item "$root\kvserver.service" "$out\kvserver.service"
+
 # --- Cleanup temp dirs ---
 Remove-Item $tmpApi -Recurse -Force
 Remove-Item $tmpCli -Recurse -Force
