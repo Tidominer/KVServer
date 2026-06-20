@@ -1,0 +1,10 @@
+/.claude
+/.idea
+/KVServer.Api/bin
+/KVServer.Api/obj
+/KVServer.Cli/bin
+/KVServer.Cli/obj
+/KVServer.Core/bin
+/KVServer.Core/obj
+/KVServer.Infrastructure/bin
+/KVServer.Infrastructure/obj

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KVServer - Key-Value Storage</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Login Page -->
+        <div id="login-page" class="page active">
+            <div class="login-container">
+                <h1>KVServer</h1>
+                <p class="subtitle">Secure Key-Value Storage</p>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="access-token">Access Token</label>
+                        <input type="password" id="access-token" required
+                               placeholder="Enter your storage access token">
+                    </div>
+                    <button type="submit" class="btn-primary">Login</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Dashboard Page -->
+        <div id="dashboard-page" class="page">
+            <nav class="navbar">
+                <div class="nav-brand">KVServer</div>
+                <div class="nav-actions">
+                    <button id="theme-toggle" class="btn-icon" title="Toggle dark mode">
+                        <span id="theme-icon">🌙</span>
+                    </button>
+                    <button id="logout-btn" class="btn-secondary">Logout</button>
+                </div>
+            </nav>
+
+            <div class="container">
+                <div class="toolbar">
+                    <h2>Key-Value Pairs</h2>
+                    <div class="toolbar-actions">
+                        <button id="create-key-btn" class="btn-primary">Create New Key</button>
+                        <button id="refresh-btn" class="btn-secondary">Refresh</button>
+                    </div>
+                </div>
+
+                <div id="key-list" class="key-list">
+                    <!-- Keys will be rendered here -->
+                </div>
+
+                <!-- Code Samples Section -->
+                <div class="code-samples-section">
+                    <h3>API Code Samples</h3>
+                    <p class="subtitle">Use these code snippets to integrate KVServer with your applications</p>
+
+                    <div class="code-samples-controls">
+                        <div class="control-group">
+                            <label for="language-select">Language:</label>
+                            <select id="language-select">
+                                <option value="javascript">JavaScript</option>
+                                <option value="python">Python</option>
+                                <option value="curl">cURL</option>
+                                <option value="csharp">C#</option>
+                                <option value="go">Go</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="action-select">Action:</label>
+                            <select id="action-select">
+                                <option value="read">Read Value</option>
+                                <option value="create">Create Key</option>
+                                <option value="update">Update Key</option>
+                                <option value="list">List Keys</option>
+                                <option value="delete">Delete Key</option>
+                                <option value="history">Get History</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="code-sample">
+                        <div class="code-header">
+                            <span id="code-title">JavaScript - Read Value</span>
+                            <button id="copy-code-btn" class="btn-small">Copy</button>
+                        </div>
+                        <pre><code id="code-content">// Code sample will appear here</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Editor Modal -->
+        <div id="key-editor-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modal-title">Create Key</h2>
+                    <button class="close-btn" onclick="closeModal()">&times;</button>
+                </div>
+                <form id="key-form">
+                    <div class="form-group">
+                        <label for="key-name">Key Name</label>
+                        <input type="text" id="key-name" required
+                               placeholder="Enter key name">
+                    </div>
+                    <div class="form-group">
+                        <label for="key-value">Value</label>
+                        <textarea id="key-value" required
+                                  placeholder="Enter value"
+                                  rows="5"></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- History Viewer Modal -->
+        <div id="history-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Version History</h2>
+                    <button class="close-btn" onclick="closeHistoryModal()">&times;</button>
+                </div>
+                <div id="history-content">
+                    <!-- History will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load JavaScript files in correct order -->
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/codeSamples.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
