@@ -23,7 +23,7 @@ A secure, multi-tenant key-value store server built with .NET 10. Values are enc
 | `KVServer.Core` | Domain models and service/repository interfaces |
 | `KVServer.Infrastructure` | EF Core + SQLite, service implementations, encryption |
 | `KVServer.Api` | ASP.NET Core Web API + optional SPA static files |
-| `KVServer.Cli` | CLI tool for storage and key management |
+| `KVServer.Cli` | CLI tool for storage and key management (direct database access, no API calls) |
 
 ## Requirements
 
@@ -147,7 +147,7 @@ All endpoints require `X-Access-Token: <token>` header.
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/storages` | Create a new storage (used by CLI) |
+| `POST` | `/api/storages` | Create a new storage |
 | `GET` | `/api/storages/current` | Get the name and ID of the authenticated storage. |
 
 ### Keys
