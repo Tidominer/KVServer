@@ -34,8 +34,7 @@ A secure, multi-tenant key-value store server built with .NET 10. Values are enc
 ### 1. Run the API server
 
 ```bash
-cd KVServer.Api
-dotnet run
+kvserver
 ```
 
 The server starts on `http://localhost:5205` by default (configured in `appsettings.json`). Open that URL in a browser to access the web UI.
@@ -45,8 +44,7 @@ The server starts on `http://localhost:5205` by default (configured in `appsetti
 Use the CLI to create a storage and receive its access token:
 
 ```bash
-cd KVServer.Cli
-dotnet run -- storage create my-storage
+kvserver-cli storage create my-storage
 ```
 
 Output:
@@ -63,28 +61,20 @@ Save this token securely — it cannot be recovered.
 
 Navigate to `http://localhost:5205`, enter the access token, and manage keys through the browser interface.
 
-### 4. Use the API directly
+### 4. Read values via the API
 
 Pass the token in every request via the `X-Access-Token` header.
 
 ```bash
-# Create a key
-curl -X POST http://localhost:5205/api/keys \
-  -H "X-Access-Token: <your-token>" \
-  -H "Content-Type: application/json" \
-  -d '{"key": "greeting", "value": "hello"}'
-
-# Read it back
+# Get a key's current value
 curl http://localhost:5205/api/keys/greeting \
   -H "X-Access-Token: <your-token>"
 
-# Update (creates a new version)
-curl -X PUT http://localhost:5205/api/keys/greeting \
-  -H "X-Access-Token: <your-token>" \
-  -H "Content-Type: application/json" \
-  -d '{"value": "hello world"}'
+# Get a specific version
+curl http://localhost:5205/api/keys/greeting/versions/1 \
+  -H "X-Access-Token: <your-token>"
 
-# View version history
+# View full version history
 curl http://localhost:5205/api/keys/greeting/history \
   -H "X-Access-Token: <your-token>"
 ```
@@ -128,14 +118,14 @@ Priority (highest wins): **CLI flags → env vars → appsettings.json**
 #### Examples
 
 ```bash
-# Public-facing API-only, read-only, on port 443 behind a reverse proxy
-dotnet run -- --no-web --read-only --bind 0.0.0.0 --port 8080
+# Public-facing API-only, read-only, behind a reverse proxy
+kvserver --no-web --read-only --bind 0.0.0.0 --port 8080
 
-# Local dev with verbose logging
-dotnet run -- --log-level Debug
+# Verbose logging
+kvserver --log-level Debug
 
 # Custom database path with higher rate limit tolerance
-dotnet run -- --db /var/data/prod.db --rate-limit 10
+kvserver --db /var/data/prod.db --rate-limit 10
 ```
 
 ### Environment variables
@@ -158,7 +148,7 @@ All endpoints require `X-Access-Token: <token>` header.
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/api/storages` | Create a new storage (used by CLI) |
-| `GET` | `/api/storages/current` | Get the name and ID of the authenticated storage. Disabled with `--no-web`. |
+| `GET` | `/api/storages/current` | Get the name and ID of the authenticated storage. |
 
 ### Keys
 
@@ -180,37 +170,37 @@ All endpoints require `X-Access-Token: <token>` header.
 
 ## CLI Reference
 
-Run from the `KVServer.Cli` directory: `dotnet run -- <command>`. Pass `help` to any command for usage details.
+Pass `help` to any command for usage details.
 
 ### Storage commands
 
 ```bash
-dotnet run -- storage create <name>        # Create a storage, prints ID and token
-dotnet run -- storage list                 # List all storages with IDs and tokens
-dotnet run -- storage delete <id|name>     # Delete a storage (with confirmation prompt)
+kvserver-cli storage create <name>        # Create a storage, prints ID and token
+kvserver-cli storage list                 # List all storages with IDs and tokens
+kvserver-cli storage delete <id|name>     # Delete a storage (with confirmation prompt)
 ```
 
 ### Token commands
 
 ```bash
-dotnet run -- token regenerate <id|name>   # Rotate the access token; all values are
-                                           # automatically re-encrypted with the new token
+kvserver-cli token regenerate <id|name>   # Rotate the access token; all values are
+                                          # automatically re-encrypted with the new token
 ```
 
 ### Key commands
 
 ```bash
-dotnet run -- key list    <token>                    # List all keys
-dotnet run -- key get     <token> <key>              # Get the current value of a key
-dotnet run -- key get     <token> <key> --version 2  # Get a specific version
-dotnet run -- key set     <token> <key> <value>      # Create or update a key
-dotnet run -- key set     <token> <key> -            # Read value from stdin
-dotnet run -- key delete  <token> <key>              # Delete a key (with confirmation)
-dotnet run -- key history <token> <key>              # Show full version history
-dotnet run -- key export  <token>                    # Export all keys to JSON (stdout)
-dotnet run -- key export  <token> --output file.json # Export to a file
-dotnet run -- key import  <token> <file.json>        # Import keys from a JSON file
-dotnet run -- key import  <token> -                  # Import from stdin
+kvserver-cli key list    <token>                    # List all keys
+kvserver-cli key get     <token> <key>              # Get the current value of a key
+kvserver-cli key get     <token> <key> --version 2  # Get a specific version
+kvserver-cli key set     <token> <key> <value>      # Create or update a key
+kvserver-cli key set     <token> <key> -            # Read value from stdin
+kvserver-cli key delete  <token> <key>              # Delete a key (with confirmation)
+kvserver-cli key history <token> <key>              # Show full version history
+kvserver-cli key export  <token>                    # Export all keys to JSON (stdout)
+kvserver-cli key export  <token> --output file.json # Export to a file
+kvserver-cli key import  <token> <file.json>        # Import keys from a JSON file
+kvserver-cli key import  <token> -                  # Import from stdin
 ```
 
 #### Export / import format
@@ -231,7 +221,7 @@ Import is idempotent — existing keys are updated, new keys are created. A summ
 ## Security Notes
 
 - Encryption keys are never stored — they are derived at request time from the access token and a per-storage random salt using PBKDF2.
-- Losing an access token means losing access to all encrypted values in that storage. The token cannot be recovered, only rotated.
+- If you lose an access token, you can recover access by running `kvserver-cli token regenerate <name>` — this issues a new token and re-encrypts all values without requiring the old token. Data is only unrecoverable if the database itself is lost.
 - Token rotation (`token regenerate`) re-encrypts all version history entries before updating the stored token, so no data is lost.
 - The API enforces IP-based rate limiting on authentication failures to mitigate brute-force attacks.
 - For public deployments, run behind a TLS-terminating reverse proxy (nginx, Caddy, Traefik) rather than exposing the server directly. Use `--bind 127.0.0.1` to ensure the app is only reachable through the proxy.
@@ -239,11 +229,11 @@ Import is idempotent — existing keys are updated, new keys are created. A summ
 ## Building for Production (Linux x64)
 
 ```bash
-cd KVServer.Api
-dotnet publish -c Release -r linux-x64 --self-contained
+dotnet publish KVServer.Api  -c Release -r linux-x64 --self-contained
+dotnet publish KVServer.Cli  -c Release -r linux-x64 --self-contained
 ```
 
-The output will be in `bin/Release/net10.0/linux-x64/publish/`.
+Outputs will be in each project's `bin/Release/net10.0/linux-x64/publish/`.
 
 ## License
 

@@ -10,19 +10,16 @@ public class StorageController : ControllerBase
 {
     private readonly IStorageService _storageService;
     private readonly ILogger<StorageController> _logger;
-    private readonly ServerOptions _serverOptions;
 
-    public StorageController(IStorageService storageService, ILogger<StorageController> logger, ServerOptions serverOptions)
+    public StorageController(IStorageService storageService, ILogger<StorageController> logger)
     {
         _storageService = storageService;
         _logger = logger;
-        _serverOptions = serverOptions;
     }
 
     [HttpGet("current")]
     public IActionResult GetCurrentStorage()
     {
-        if (_serverOptions.NoWeb) return NotFound();
         var storage = HttpContext.Items["Storage"] as KVServer.Core.Models.Storage;
         if (storage == null) return Unauthorized();
         return Ok(new { id = storage.Id, name = storage.Name });
