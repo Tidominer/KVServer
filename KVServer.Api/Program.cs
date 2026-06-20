@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using KVServer.Api;
 using KVServer.Api.Middleware;
 using KVServer.Core.Repositories;
 using KVServer.Core.Services;
@@ -7,41 +8,36 @@ using KVServer.Infrastructure.Data;
 using KVServer.Infrastructure.Repositories;
 using KVServer.Infrastructure.Services;
 
-var builder = WebApplication.CreateBuilder(args);
+var preConfig = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: true)
+    .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true)
+    .AddEnvironmentVariables("KVSERVER_")
+    .Build();
 
-// Get database path from configuration
-var dbPath = builder.Configuration["DbPath"];
-if (string.IsNullOrEmpty(dbPath))
-{
-    // Default to ./data/kvserver.db if not specified
-    var dataDirectory = "./data";
-    if (!Path.IsPathRooted(dataDirectory))
-    {
-        var basePath = Directory.GetCurrentDirectory();
-        dataDirectory = Path.Combine(basePath, dataDirectory);
-    }
-    Directory.CreateDirectory(dataDirectory);
-    dbPath = Path.Combine(dataDirectory, "kvserver.db");
-}
+var options = ServerOptions.Parse(args, preConfig);
 
-// Ensure the directory for the database file exists
+var builder = WebApplication.CreateBuilder(options.RemainingArgs);
+
+// ── Logging ───────────────────────────────────────────────────────────────────
+
+builder.Logging.SetMinimumLevel(options.LogLevel);
+
+// ── Database path ─────────────────────────────────────────────────────────────
+
+var dbPath = options.DbPath
+    ?? Path.Combine(Directory.GetCurrentDirectory(), "data", "kvserver.db");
+
 var dbDirectory = Path.GetDirectoryName(dbPath);
-if (!string.IsNullOrEmpty(dbDirectory) && !Directory.Exists(dbDirectory))
-{
+if (!string.IsNullOrEmpty(dbDirectory))
     Directory.CreateDirectory(dbDirectory);
-    Console.WriteLine($"Created database directory: {dbDirectory}");
-}
 
-// Construct connection string from DbPath
-var connectionString = $"Data Source={dbPath}";
+Console.WriteLine($"Database: {dbPath}");
 
-Console.WriteLine($"Database path: {dbPath}");
+// ── Services ──────────────────────────────────────────────────────────────────
 
-// Add DbContext
-builder.Services.AddDbContext<KVServerDbContext>(options =>
-    options.UseSqlite(connectionString));
-
-// Register services
+builder.Services.AddSingleton(options);
+builder.Services.AddDbContext<KVServerDbContext>(o => o.UseSqlite($"Data Source={dbPath}"));
 builder.Services.AddScoped<IStorageRepository, StorageRepository>();
 builder.Services.AddScoped<IKeyRepository, KeyRepository>();
 builder.Services.AddScoped<IVersionRepository, VersionRepository>();
@@ -49,51 +45,61 @@ builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IStorageService, StorageService>();
 builder.Services.AddScoped<IKeyService, KeyService>();
-
-// Add services to the container.
 builder.Services.AddControllers();
 
-// Add CORS for frontend
-builder.Services.AddCors(options =>
+if (!options.NoCors)
 {
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
-});
+    builder.Services.AddCors(o => o.AddPolicy("AllowAll", p =>
+        p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+}
+
+// ── Port ──────────────────────────────────────────────────────────────────────
+
+if (options.Port.HasValue || options.Bind != "localhost")
+    builder.WebHost.UseUrls($"http://{options.Bind}:{options.Port ?? 5000}");
+
+// ── Build ─────────────────────────────────────────────────────────────────────
 
 var app = builder.Build();
 
-// Use authentication middleware before routing
+// ── Middleware pipeline ───────────────────────────────────────────────────────
+
 app.UseMiddleware<TokenAuthenticationMiddleware>();
 
-app.UseCors("AllowAll");
-app.UseStaticFiles(); // Serve static files from wwwroot
+if (options.ReadOnly)
+    app.UseMiddleware<ReadOnlyMiddleware>();
+
+if (!options.NoCors)
+    app.UseCors("AllowAll");
+
+if (!options.NoWeb)
+    app.UseStaticFiles();
+
 app.UseRouting();
 app.UseAuthorization();
 app.MapControllers();
 
-// Health check endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
-   .WithName("HealthCheck")
-   .RequireHost("*");
+   .WithName("HealthCheck");
 
-// Serve index.html as default route for SPA
-app.MapGet("/", () => Results.File("index.html", "text/html"))
-   .ExcludeFromDescription();
+if (!options.NoWeb)
+{
+    app.MapGet("/", () => Results.File("index.html", "text/html"))
+       .ExcludeFromDescription();
+    app.MapFallback(() => Results.File("index.html", "text/html"))
+       .ExcludeFromDescription();
+}
 
-// API fallback - return 404 for unknown API routes
-app.MapFallback(() => Results.File("index.html", "text/html"))
-   .ExcludeFromDescription();
+// ── Database ──────────────────────────────────────────────────────────────────
 
-// Ensure database is created
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<KVServerDbContext>();
-    dbContext.Database.EnsureCreated();
-    Console.WriteLine("Database created/verified successfully");
+    scope.ServiceProvider.GetRequiredService<KVServerDbContext>().Database.EnsureCreated();
 }
+
+// ── Startup info ──────────────────────────────────────────────────────────────
+
+Console.WriteLine("KVServer starting with options:");
+options.PrintStartupInfo();
 
 app.Run();

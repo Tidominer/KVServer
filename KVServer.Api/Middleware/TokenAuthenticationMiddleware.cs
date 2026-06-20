@@ -12,20 +12,21 @@ public class TokenAuthenticationMiddleware
     private readonly RequestDelegate _next;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<TokenAuthenticationMiddleware> _logger;
+    private readonly ServerOptions _serverOptions;
     private static readonly ConcurrentDictionary<string, FailedLoginAttempts> _failedAttempts = new();
     private static readonly Timer _cleanupTimer;
 
     static TokenAuthenticationMiddleware()
     {
-        // Cleanup old entries every 5 minutes
         _cleanupTimer = new Timer(_ => CleanupOldEntries(), null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
     }
 
-    public TokenAuthenticationMiddleware(RequestDelegate next, IServiceScopeFactory scopeFactory, ILogger<TokenAuthenticationMiddleware> logger)
+    public TokenAuthenticationMiddleware(RequestDelegate next, IServiceScopeFactory scopeFactory, ILogger<TokenAuthenticationMiddleware> logger, ServerOptions serverOptions)
     {
         _next = next;
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _serverOptions = serverOptions;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -84,7 +85,7 @@ public class TokenAuthenticationMiddleware
         await _next(context);
     }
 
-    private static bool IsRateLimited(string clientIp, out int retryAfter)
+    private bool IsRateLimited(string clientIp, out int retryAfter)
     {
         retryAfter = 0;
 
@@ -93,12 +94,10 @@ public class TokenAuthenticationMiddleware
             return false;
         }
 
-        // Clean up old attempts (older than 1 minute)
         var now = DateTime.UtcNow;
         attempts.RemoveOldAttempts(now.Subtract(TimeSpan.FromMinutes(1)));
 
-        // Check if exceeded rate limit
-        if (attempts.RecentAttempts.Count >= 3)
+        if (attempts.RecentAttempts.Count >= _serverOptions.RateLimit)
         {
             var oldestAttempt = attempts.RecentAttempts[0];
             retryAfter = 60 - (int)(now - oldestAttempt).TotalSeconds;
