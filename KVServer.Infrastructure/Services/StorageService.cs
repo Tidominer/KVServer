@@ -22,7 +22,12 @@ public class StorageService : IStorageService
 
     public async Task<Storage> CreateStorageAsync(string name)
     {
-        // Check if storage with same name already exists
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("Storage name cannot be empty.");
+
+        if (name.All(char.IsDigit))
+            throw new InvalidOperationException("Storage name cannot be purely numeric. Use a name that contains at least one letter.");
+
         var existing = await _storageRepository.GetByNameAsync(name);
         if (existing != null)
             throw new InvalidOperationException($"Storage with name '{name}' already exists");
