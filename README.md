@@ -246,6 +246,8 @@ Two PowerShell build scripts are provided. Both produce `kvserver` and `kvserver
 .\build-linux-x64.ps1 -Zip
 ```
 
+> **Note:** A plain `dotnet publish` produces binaries named `KVServer.Api` and `KVServer.Cli`. The build scripts rename them to `kvserver` and `kvserver-cli`.
+
 ## License
 
 MIT
