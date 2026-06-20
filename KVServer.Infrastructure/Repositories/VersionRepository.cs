@@ -45,6 +45,12 @@ public class VersionRepository : IVersionRepository
         return version;
     }
 
+    public async Task UpdateManyAsync(IEnumerable<VersionEntry> versions)
+    {
+        _context.Versions.UpdateRange(versions);
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<int> GetNextVersionNumberAsync(int keyId)
     {
         var lastVersion = await _context.Versions

@@ -44,6 +44,10 @@ class APIClient {
     }
 
     // Storage operations
+    async getCurrentStorage() {
+        return this.request('/storages/current');
+    }
+
     async getKeys() {
         return this.request('/keys');
     }

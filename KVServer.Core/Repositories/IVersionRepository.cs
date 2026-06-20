@@ -8,6 +8,7 @@ public interface IVersionRepository
     Task<VersionEntry?> GetByKeyAndVersionAsync(int keyId, int versionNumber);
     Task<IEnumerable<VersionEntry>> GetByKeyIdAsync(int keyId);
     Task<VersionEntry> CreateAsync(VersionEntry version);
+    Task UpdateManyAsync(IEnumerable<VersionEntry> versions);
     Task<int> GetNextVersionNumberAsync(int keyId);
     Task DeleteAsync(int id);
 }

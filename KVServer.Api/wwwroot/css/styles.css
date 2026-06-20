@@ -67,6 +67,22 @@ body {
     font-size: 1.5rem;
     font-weight: bold;
     color: #667eea;
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.nav-storage-name {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #888;
+    margin-left: 0.5rem;
+}
+
+.nav-storage-name::before {
+    content: '/';
+    margin-right: 0.5rem;
+    color: #ccc;
 }
 
 .nav-actions {
@@ -693,6 +709,14 @@ body.dark-mode .navbar {
 
 body.dark-mode .nav-brand {
     color: #667eea;
+}
+
+body.dark-mode .nav-storage-name {
+    color: #777;
+}
+
+body.dark-mode .nav-storage-name::before {
+    color: #444;
 }
 
 body.dark-mode .container h2 {

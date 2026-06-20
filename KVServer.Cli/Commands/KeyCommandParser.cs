@@ -30,6 +30,8 @@ public class KeyCommandParser : ICommand
             "set"     => _serviceProvider.GetRequiredService<KeySetCommand>(),
             "delete"  => _serviceProvider.GetRequiredService<KeyDeleteCommand>(),
             "history" => _serviceProvider.GetRequiredService<KeyHistoryCommand>(),
+            "export"  => _serviceProvider.GetRequiredService<KeyExportCommand>(),
+            "import"  => _serviceProvider.GetRequiredService<KeyImportCommand>(),
             _ => null
         };
 
@@ -55,6 +57,8 @@ public class KeyCommandParser : ICommand
         Console.WriteLine("  set     <token> <key> <val>  Create or update a key (use '-' for stdin)");
         Console.WriteLine("  delete  <token> <key>        Delete a key and all its versions");
         Console.WriteLine("  history <token> <key>        Show the version history of a key");
+        Console.WriteLine("  export  <token>              Export all keys to JSON (stdout or --output file)");
+        Console.WriteLine("  import  <token> <file>       Import keys from a JSON file (or '-' for stdin)");
         Console.WriteLine("  help                         Show this help");
         Console.WriteLine();
         Console.WriteLine("Examples:");
@@ -62,7 +66,7 @@ public class KeyCommandParser : ICommand
         Console.WriteLine("  kvserver-cli key get     kv_1_abc123 db.host");
         Console.WriteLine("  kvserver-cli key get     kv_1_abc123 db.host --version 2");
         Console.WriteLine("  kvserver-cli key set     kv_1_abc123 db.host localhost");
-        Console.WriteLine("  kvserver-cli key delete  kv_1_abc123 db.host");
-        Console.WriteLine("  kvserver-cli key history kv_1_abc123 db.host");
+        Console.WriteLine("  kvserver-cli key export  kv_1_abc123 --output backup.json");
+        Console.WriteLine("  kvserver-cli key import  kv_1_abc123 backup.json");
     }
 }

@@ -125,6 +125,7 @@ function handleLogout() {
     searchQuery = '';
     const searchInput = document.getElementById('search-keys');
     if (searchInput) searchInput.value = '';
+    setStorageName(null);
     auth.logout();
 }
 
@@ -459,6 +460,15 @@ function syncLineNumberScroll() {
     const lineNumbersEl = document.getElementById('line-numbers');
     if (!textarea || !lineNumbersEl) return;
     lineNumbersEl.scrollTop = textarea.scrollTop;
+}
+
+// ── Storage name ──────────────────────────────────────────────────────────────
+
+function setStorageName(name) {
+    const el = document.getElementById('storage-name');
+    if (!el) return;
+    el.textContent = name ?? '';
+    el.style.display = name ? '' : 'none';
 }
 
 // ── Theme ─────────────────────────────────────────────────────────────────────

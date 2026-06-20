@@ -17,6 +17,14 @@ public class StorageController : ControllerBase
         _logger = logger;
     }
 
+    [HttpGet("current")]
+    public IActionResult GetCurrentStorage()
+    {
+        var storage = HttpContext.Items["Storage"] as KVServer.Core.Models.Storage;
+        if (storage == null) return Unauthorized();
+        return Ok(new { id = storage.Id, name = storage.Name });
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateStorage([FromBody] CreateStorageRequest request)
     {

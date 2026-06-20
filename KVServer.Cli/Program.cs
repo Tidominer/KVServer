@@ -68,6 +68,8 @@ class Program
             .AddTransient<KeySetCommand>()
             .AddTransient<KeyDeleteCommand>()
             .AddTransient<KeyHistoryCommand>()
+            .AddTransient<KeyExportCommand>()
+            .AddTransient<KeyImportCommand>()
             .BuildServiceProvider();
 
         // Ensure database is created

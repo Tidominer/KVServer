@@ -6,10 +6,10 @@ class AuthManager {
     }
 
     init() {
-        // Check if user is already logged in
         const token = localStorage.getItem('access_token');
         if (token) {
             api.setToken(token);
+            api.getCurrentStorage().then(s => setStorageName(s?.name ?? null)).catch(() => {});
             this.navigateTo('dashboard');
         }
     }
@@ -18,6 +18,8 @@ class AuthManager {
         try {
             api.setToken(token);
             await api.getKeys();
+            const storage = await api.getCurrentStorage().catch(() => null);
+            setStorageName(storage?.name ?? null);
             this.navigateTo('dashboard');
             return true;
         } catch (error) {
@@ -35,6 +37,7 @@ class AuthManager {
 
     logout() {
         api.clearToken();
+        setStorageName(null);
         this.navigateTo('login');
     }
 

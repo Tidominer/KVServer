@@ -62,6 +62,28 @@ public class KeyService : IKeyService
         return key;
     }
 
+    public async Task ReEncryptAllAsync(int storageId, string oldEncKey, string newEncKey)
+    {
+        var keys = await _keyRepository.GetByStorageIdAsync(storageId);
+        var allVersions = new List<VersionEntry>();
+
+        foreach (var key in keys)
+        {
+            var versions = await _versionRepository.GetByKeyIdAsync(key.Id);
+            foreach (var version in versions)
+            {
+                var plaintext = _encryptionService.Decrypt(version.EncryptedValue, version.IV, oldEncKey);
+                var (newCipher, newIv) = _encryptionService.Encrypt(plaintext, newEncKey);
+                version.EncryptedValue = newCipher;
+                version.IV = newIv;
+                allVersions.Add(version);
+            }
+        }
+
+        if (allVersions.Count > 0)
+            await _versionRepository.UpdateManyAsync(allVersions);
+    }
+
     public async Task<(Key Key, bool Created)> UpsertKeyAsync(int storageId, string keyName, string value, string createdBy)
     {
         if (await _keyRepository.ExistsAsync(storageId, keyName))
