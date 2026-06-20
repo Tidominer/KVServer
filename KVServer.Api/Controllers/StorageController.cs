@@ -5,7 +5,7 @@ using KVServer.Core.Services;
 namespace KVServer.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/storages")]
 public class StorageController : ControllerBase
 {
     private readonly IStorageService _storageService;
