@@ -14,17 +14,21 @@ class AuthManager {
         }
     }
 
-    async login(token) {
+    async login(token, errorEl) {
         try {
-            // Set token first, then test it by making an API call
             api.setToken(token);
             await api.getKeys();
             this.navigateTo('dashboard');
             return true;
         } catch (error) {
             console.error('Login error:', error);
-            alert('Invalid access token');
-            api.clearToken(); // Clear invalid token
+            api.clearToken();
+            if (errorEl) {
+                errorEl.textContent = error.status === 429
+                    ? 'Too many failed attempts. Please wait before trying again.'
+                    : 'Invalid access token. Please check and try again.';
+                errorEl.style.display = 'block';
+            }
             return false;
         }
     }

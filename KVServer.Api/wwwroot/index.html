@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KVServer - Key-Value Storage</title>
+    <title>KVServer</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -19,7 +19,8 @@
                         <input type="password" id="access-token" required
                                placeholder="Enter your storage access token">
                     </div>
-                    <button type="submit" class="btn-primary">Login</button>
+                    <div id="login-error" class="login-error" style="display:none"></div>
+                    <button type="submit" class="btn-primary">Open Storage</button>
                 </form>
             </div>
         </div>
@@ -29,10 +30,15 @@
             <nav class="navbar">
                 <div class="nav-brand">KVServer</div>
                 <div class="nav-actions">
-                    <button id="theme-toggle" class="btn-icon" title="Toggle dark mode">
-                        <span id="theme-icon">🌙</span>
+                    <!-- Animated theme toggle -->
+                    <button id="theme-toggle" class="theme-switch" title="Toggle dark mode">
+                        <img src="svg/sun.svg"  class="ts-icon ts-sun"  alt="">
+                        <div class="ts-handle"></div>
+                        <img src="svg/moon.svg" class="ts-icon ts-moon" alt="">
                     </button>
-                    <button id="logout-btn" class="btn-secondary">Logout</button>
+                    <button id="logout-btn" class="btn-icon" title="Close Storage">
+                        <img src="svg/logout.svg" class="icon" alt="Close Storage">
+                    </button>
                 </div>
             </nav>
 
@@ -40,14 +46,24 @@
                 <div class="toolbar">
                     <h2>Key-Value Pairs</h2>
                     <div class="toolbar-actions">
-                        <button id="create-key-btn" class="btn-primary">Create New Key</button>
-                        <button id="refresh-btn" class="btn-secondary">Refresh</button>
+                        <button id="create-key-btn" class="btn-primary btn-with-icon">
+                            <img src="svg/add.svg" class="icon icon-btn" alt=""> Create New Key
+                        </button>
+                        <button id="refresh-btn" class="btn-icon" title="Refresh">
+                            <img src="svg/refresh.svg" class="icon" alt="Refresh">
+                        </button>
                     </div>
+                </div>
+
+                <div class="search-bar">
+                    <img src="svg/search.svg" class="search-icon icon" alt="">
+                    <input type="text" id="search-keys" placeholder="Search keys…" autocomplete="off">
                 </div>
 
                 <div id="key-list" class="key-list">
                     <!-- Keys will be rendered here -->
                 </div>
+                <div id="pagination" class="pagination" style="display:none"></div>
 
                 <!-- Code Samples Section -->
                 <div class="code-samples-section">
@@ -65,25 +81,19 @@
                                 <option value="go">Go</option>
                             </select>
                         </div>
-                        <div class="control-group">
-                            <label for="action-select">Action:</label>
-                            <select id="action-select">
-                                <option value="read">Read Value</option>
-                                <option value="create">Create Key</option>
-                                <option value="update">Update Key</option>
-                                <option value="list">List Keys</option>
-                                <option value="delete">Delete Key</option>
-                                <option value="history">Get History</option>
-                            </select>
-                        </div>
                     </div>
 
                     <div class="code-sample">
                         <div class="code-header">
                             <span id="code-title">JavaScript - Read Value</span>
-                            <button id="copy-code-btn" class="btn-small">Copy</button>
+                            <button id="copy-code-btn" class="btn-small btn-with-icon">
+                                <img src="svg/copy.svg" class="icon icon-btn" alt=""> Copy
+                            </button>
                         </div>
-                        <pre><code id="code-content">// Code sample will appear here</code></pre>
+                        <div class="code-body">
+                            <div id="code-line-numbers" class="code-line-numbers"></div>
+                            <pre id="code-pre"><code id="code-content">// Code sample will appear here</code></pre>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -104,15 +114,19 @@
                     </div>
                     <div class="form-group">
                         <label for="key-value">Value</label>
-                        <textarea id="key-value" required
-                                  placeholder="Enter value"
-                                  rows="5"></textarea>
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
-                        <button type="submit" class="btn-primary">Save</button>
+                        <div class="editor-container">
+                            <div id="line-numbers" class="line-numbers"></div>
+                            <textarea id="key-value" required
+                                      placeholder="Enter value"
+                                      rows="5"
+                                      spellcheck="false"></textarea>
+                        </div>
                     </div>
                 </form>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" form="key-form" class="btn-primary">Save</button>
+                </div>
             </div>
         </div>
 
@@ -128,7 +142,26 @@
                 </div>
             </div>
         </div>
+
+        <!-- Confirm Modal -->
+        <div id="confirm-modal" class="modal">
+            <div class="modal-content modal-content-sm">
+                <div class="modal-header">
+                    <h2 id="confirm-title">Confirm</h2>
+                </div>
+                <div class="confirm-body">
+                    <p id="confirm-message"></p>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" id="confirm-cancel">Cancel</button>
+                    <button type="button" class="btn-danger"    id="confirm-ok">Delete</button>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- Toast container -->
+    <div id="toast-container"></div>
 
     <!-- Load JavaScript files in correct order -->
     <script src="js/api.js"></script>

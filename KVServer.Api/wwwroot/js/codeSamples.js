@@ -728,10 +728,79 @@ func main() {
         return '// Sample not available';
     }
 
+    highlight(code, lang) {
+        const escape = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        const KW = {
+            javascript: /\b(const|let|var|function|return|if|else|for|while|class|new|await|async|import|export|from|of|in|true|false|null|undefined|this|typeof|throw|try|catch|finally)\b/g,
+            python:     /\b(def|class|import|from|return|if|elif|else|for|while|in|not|and|or|True|False|None|with|as|try|except|finally|raise|async|await)\b/g,
+            curl:       /\b(curl)\b/g,
+            csharp:     /\b(using|class|public|private|protected|static|async|await|return|var|string|int|bool|void|new|if|else|foreach|for|while|try|catch|finally|throw|namespace|true|false|null|Task|Console|HttpClient|JsonSerializer|StringContent|Encoding)\b/g,
+            go:         /\b(package|import|func|return|if|else|for|range|var|const|type|struct|interface|map|chan|go|defer|select|case|default|break|continue|true|false|nil|fmt|http|json|ioutil|string|int|error)\b/g,
+        };
+
+        const patterns = [];
+
+        if (lang !== 'python' && lang !== 'curl') {
+            patterns.push([/\/\*[\s\S]*?\*\//g, 'cm']);
+        }
+        if (lang === 'python' || lang === 'curl') {
+            patterns.push([/#[^\n]*/g, 'cm']);
+        } else {
+            patterns.push([/\/\/[^\n]*/g, 'cm']);
+        }
+        if (lang === 'javascript') {
+            patterns.push([/`(?:[^`\\]|\\.)*`/g, 'st']);
+        }
+        patterns.push([/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, 'st']);
+        if (lang === 'curl') {
+            patterns.push([/--?[a-zA-Z][-a-zA-Z]*/g, 'kw']);
+            patterns.push([/\$[A-Z_][A-Z0-9_]*/g, 'vr']);
+        }
+        patterns.push([/\b\d+\.?\d*\b/g, 'nm']);
+        if (KW[lang]) patterns.push([KW[lang], 'kw']);
+
+        const taken = new Uint8Array(code.length);
+        const ranges = [];
+
+        for (const [re, cls] of patterns) {
+            re.lastIndex = 0;
+            let m;
+            while ((m = re.exec(code)) !== null) {
+                const s = m.index, e = m.index + m[0].length;
+                let overlap = false;
+                for (let i = s; i < e; i++) {
+                    if (taken[i]) { overlap = true; break; }
+                }
+                if (!overlap) {
+                    ranges.push([s, e, cls]);
+                    taken.fill(1, s, e);
+                }
+            }
+        }
+
+        ranges.sort((a, b) => a[0] - b[0]);
+
+        let html = '', pos = 0;
+        for (const [s, e, cls] of ranges) {
+            if (pos < s) html += escape(code.slice(pos, s));
+            html += `<span class="hl-${cls}">${escape(code.slice(s, e))}</span>`;
+            pos = e;
+        }
+        if (pos < code.length) html += escape(code.slice(pos));
+        return html;
+    }
+
     updateSample(language, action) {
         const code = this.getCodeSample(language, action);
-        document.getElementById('code-content').textContent = code;
-        document.getElementById('code-title').textContent = `${this.capitalize(language)} - ${this.capitalize(action)}`;
+        document.getElementById('code-content').innerHTML = this.highlight(code, language);
+        document.getElementById('code-title').textContent = `${this.capitalize(language)} - Read Value`;
+
+        const lineNumsEl = document.getElementById('code-line-numbers');
+        if (lineNumsEl) {
+            const count = (code.match(/\n/g) || []).length + 1;
+            lineNumsEl.innerHTML = Array.from({ length: count }, (_, i) => `<span>${i + 1}</span>`).join('');
+        }
     }
 
     capitalize(str) {

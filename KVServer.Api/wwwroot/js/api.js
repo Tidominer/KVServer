@@ -29,8 +29,15 @@ class APIClient {
         const response = await fetch(url, { ...options, headers });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Request failed');
+            const error = await response.json().catch(() => ({}));
+            const msg = error.error || 'Request failed';
+            const err = new Error(msg);
+            err.status = response.status;
+            throw err;
+        }
+
+        if (response.status === 204 || response.headers.get('Content-Length') === '0') {
+            return null;
         }
 
         return response.json();

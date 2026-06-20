@@ -1,103 +1,219 @@
 // Main application logic
+
+const PAGE_SIZE = 20;
+let allKeys = [];
+let currentPage = 1;
+let searchQuery = '';
+
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
 });
 
 function initializeApp() {
-    // Setup login form
     const loginForm = document.getElementById('login-form');
-    if (loginForm) {
-        loginForm.addEventListener('submit', handleLogin);
-    }
+    if (loginForm) loginForm.addEventListener('submit', handleLogin);
 
-    // Setup logout button
     const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', handleLogout);
-    }
+    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
 
-    // Setup toolbar buttons
     const createKeyBtn = document.getElementById('create-key-btn');
-    if (createKeyBtn) {
-        createKeyBtn.addEventListener('click', handleCreateKey);
-    }
+    if (createKeyBtn) createKeyBtn.addEventListener('click', handleCreateKey);
 
     const refreshBtn = document.getElementById('refresh-btn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', loadKeys);
-    }
+    if (refreshBtn) refreshBtn.addEventListener('click', loadKeys);
 
-    // Setup key form
     const keyForm = document.getElementById('key-form');
-    if (keyForm) {
-        keyForm.addEventListener('submit', handleKeyFormSubmit);
+    if (keyForm) keyForm.addEventListener('submit', handleKeyFormSubmit);
+
+    const keyValueTextarea = document.getElementById('key-value');
+    if (keyValueTextarea) {
+        keyValueTextarea.addEventListener('input', updateLineNumbers);
+        keyValueTextarea.addEventListener('scroll', syncLineNumberScroll);
+        keyValueTextarea.addEventListener('keydown', updateLineNumbers);
+        window.addEventListener('resize', updateLineNumbers);
+        updateLineNumbers();
     }
 
-    // Setup code samples controls
     const languageSelect = document.getElementById('language-select');
-    const actionSelect = document.getElementById('action-select');
     const copyCodeBtn = document.getElementById('copy-code-btn');
 
-    if (languageSelect && actionSelect) {
+    if (languageSelect) {
         languageSelect.addEventListener('change', updateCodeSample);
-        actionSelect.addEventListener('change', updateCodeSample);
-
-        // Initialize with default sample
         updateCodeSample();
     }
 
-    if (copyCodeBtn) {
-        copyCodeBtn.addEventListener('click', copyCodeToClipboard);
+    if (copyCodeBtn) copyCodeBtn.addEventListener('click', copyCodeToClipboard);
+
+    const searchInput = document.getElementById('search-keys');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            currentPage = 1;
+            renderKeysPage();
+        });
     }
 
-    // Setup theme toggle
+    const codePre = document.getElementById('code-pre');
+    if (codePre) {
+        codePre.addEventListener('scroll', () => {
+            const lineNums = document.getElementById('code-line-numbers');
+            if (lineNums) lineNums.scrollTop = codePre.scrollTop;
+        });
+    }
+
     const themeToggle = document.getElementById('theme-toggle');
-    if (themeToggle) {
-        themeToggle.addEventListener('click', toggleTheme);
-    }
+    if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
 
-    // Initialize theme from localStorage
     initializeTheme();
 
-    // Load keys if on dashboard
-    if (auth.getCurrentPage() === 'dashboard') {
-        loadKeys();
-    }
+    if (auth.getCurrentPage() === 'dashboard') loadKeys();
 }
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3100);
+}
+
+// ── Confirm modal ─────────────────────────────────────────────────────────────
+
+function showConfirm(message, title = 'Confirm') {
+    return new Promise(resolve => {
+        document.getElementById('confirm-title').textContent = title;
+        document.getElementById('confirm-message').textContent = message;
+        const modal = document.getElementById('confirm-modal');
+        modal.classList.add('active');
+
+        const ok = document.getElementById('confirm-ok');
+        const cancel = document.getElementById('confirm-cancel');
+
+        function cleanup(result) {
+            modal.classList.remove('active');
+            ok.removeEventListener('click', onOk);
+            cancel.removeEventListener('click', onCancel);
+            resolve(result);
+        }
+        function onOk()     { cleanup(true);  }
+        function onCancel() { cleanup(false); }
+
+        ok.addEventListener('click', onOk);
+        cancel.addEventListener('click', onCancel);
+    });
+}
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
 
 async function handleLogin(e) {
     e.preventDefault();
-    const token = document.getElementById('access-token').value;
+    const tokenInput = document.getElementById('access-token');
+    const errorEl    = document.getElementById('login-error');
+    errorEl.style.display = 'none';
 
-    if (await auth.login(token)) {
-        document.getElementById('access-token').value = '';
-        loadKeys();
-    }
+    if (!(await auth.login(tokenInput.value, errorEl))) return;
+    tokenInput.value = '';
+    loadKeys();
 }
 
 function handleLogout() {
+    allKeys = [];
+    currentPage = 1;
+    searchQuery = '';
+    const searchInput = document.getElementById('search-keys');
+    if (searchInput) searchInput.value = '';
     auth.logout();
 }
+
+// ── Keys ─────────────────────────────────────────────────────────────────────
 
 async function loadKeys() {
     try {
         const data = await api.getKeys();
-        renderKeys(data.keys);
+        allKeys = data.keys || [];
+        currentPage = 1;
+        renderKeysPage();
     } catch (error) {
         console.error('Failed to load keys:', error);
         if (error.message.includes('access token')) {
             auth.logout();
         } else {
-            alert('Failed to load keys: ' + error.message);
+            showToast('Failed to load keys: ' + error.message, 'error');
         }
     }
 }
 
-function renderKeys(keys) {
+function renderKeysPage() {
+    const q = searchQuery.trim().toLowerCase();
+    const filtered = q ? allKeys.filter(k => k.key.toLowerCase().includes(q)) : allKeys;
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    renderKeys(filtered.slice(start, start + PAGE_SIZE), q && filtered.length === 0);
+    renderPagination(filtered.length, totalPages);
+}
+
+function renderPagination(totalItems, totalPages) {
+    const container = document.getElementById('pagination');
+    if (!container) return;
+
+    if (totalItems <= PAGE_SIZE) {
+        container.style.display = 'none';
+        return;
+    }
+    container.style.display = 'flex';
+
+    // Collect page numbers to show: always first/last + window of ±2 around current
+    const show = new Set([1, totalPages]);
+    for (let p = Math.max(1, currentPage - 2); p <= Math.min(totalPages, currentPage + 2); p++) show.add(p);
+    const pages = [...show].sort((a, b) => a - b);
+
+    let btnHTML = '';
+    let prev = 0;
+    for (const p of pages) {
+        if (p - prev > 1) btnHTML += `<span class="pagination-ellipsis">…</span>`;
+        btnHTML += `<button class="page-btn${p === currentPage ? ' active' : ''}" data-page="${p}">${p}</button>`;
+        prev = p;
+    }
+
+    container.innerHTML = `
+        <button class="page-btn page-nav" id="prev-page-btn" ${currentPage === 1 ? 'disabled' : ''}>&#8249;</button>
+        ${btnHTML}
+        <button class="page-btn page-nav" id="next-page-btn" ${currentPage === totalPages ? 'disabled' : ''}>&#8250;</button>
+        <div class="page-jump">
+            <input id="page-input" type="number" min="1" max="${totalPages}" value="${currentPage}">
+            <span>/ ${totalPages}</span>
+        </div>
+    `;
+
+    container.querySelectorAll('.page-btn[data-page]').forEach(btn => {
+        btn.addEventListener('click', () => { currentPage = +btn.dataset.page; renderKeysPage(); });
+    });
+    container.querySelector('#prev-page-btn').addEventListener('click', () => {
+        if (currentPage > 1) { currentPage--; renderKeysPage(); }
+    });
+    container.querySelector('#next-page-btn').addEventListener('click', () => {
+        if (currentPage < totalPages) { currentPage++; renderKeysPage(); }
+    });
+    container.querySelector('#page-input').addEventListener('change', (e) => {
+        const p = parseInt(e.target.value, 10);
+        if (p >= 1 && p <= totalPages) { currentPage = p; renderKeysPage(); }
+        else e.target.value = currentPage;
+    });
+}
+
+function renderKeys(keys, isSearchEmpty = false) {
     const keyList = document.getElementById('key-list');
 
     if (!keys || keys.length === 0) {
-        keyList.innerHTML = '<p class="empty-state">No keys yet. Create your first key-value pair!</p>';
+        keyList.innerHTML = isSearchEmpty
+            ? '<p class="empty-state">No keys match your search.</p>'
+            : '<p class="empty-state">No keys yet. Create your first key-value pair!</p>';
         return;
     }
 
@@ -111,17 +227,14 @@ function renderKeys(keys) {
                 </div>
             </div>
             <div class="key-actions">
-                <button class="btn-icon" onclick="viewKey('${escapeHtml(key.key)}')" title="View">
-                    👁️
-                </button>
                 <button class="btn-icon" onclick="editKey('${escapeHtml(key.key)}')" title="Edit">
-                    ✏️
+                    <img src="svg/edit.svg" class="icon" alt="Edit">
                 </button>
                 <button class="btn-icon" onclick="viewHistory('${escapeHtml(key.key)}')" title="History">
-                    📜
+                    <img src="svg/versions.svg" class="icon icon-history" alt="History">
                 </button>
                 <button class="btn-icon" onclick="deleteKey('${escapeHtml(key.key)}')" title="Delete">
-                    🗑️
+                    <img src="svg/remove.svg" class="icon icon-remove" alt="Delete">
                 </button>
             </div>
         </div>
@@ -135,57 +248,54 @@ function handleCreateKey() {
     document.getElementById('key-value').value = '';
     document.getElementById('key-form').dataset.mode = 'create';
     document.getElementById('key-form').dataset.originalKey = '';
-
     openModal();
 }
 
 async function handleEditKey(keyName) {
     try {
-        // Fetch current value to pre-fill the form
         const data = await api.getKeyValue(keyName);
-
         document.getElementById('modal-title').textContent = 'Edit Key';
         document.getElementById('key-name').value = keyName;
         document.getElementById('key-name').disabled = true;
-        document.getElementById('key-value').value = data.value; // Pre-fill with current value
+        document.getElementById('key-value').value = data.value;
         document.getElementById('key-form').dataset.mode = 'edit';
         document.getElementById('key-form').dataset.originalKey = keyName;
-
         openModal();
     } catch (error) {
-        alert('Error loading key value: ' + error.message);
+        showToast('Error loading key value: ' + error.message, 'error');
     }
 }
 
 async function handleKeyFormSubmit(e) {
     e.preventDefault();
-
-    const mode = document.getElementById('key-form').dataset.mode;
+    const mode    = document.getElementById('key-form').dataset.mode;
     const keyName = document.getElementById('key-name').value;
-    const value = document.getElementById('key-value').value;
+    const value   = document.getElementById('key-value').value;
+
+    const form      = document.getElementById('key-form');
+    const saveBtn   = form.querySelector('button[type="submit"]');
+    const cancelBtn = form.querySelector('button[type="button"]');
+
+    saveBtn.disabled   = true;
+    cancelBtn.disabled = true;
+    const originalText = saveBtn.textContent;
+    saveBtn.textContent = 'Saving…';
 
     try {
         if (mode === 'create') {
             await api.createKey(keyName, value);
-            alert('Key created successfully!');
+            showToast('Key created successfully!', 'success');
         } else if (mode === 'edit') {
             await api.updateKey(keyName, value);
-            alert('Key updated successfully!');
+            showToast('Key updated successfully!', 'success');
         }
-
         closeModal();
         loadKeys();
     } catch (error) {
-        alert('Error: ' + error.message);
-    }
-}
-
-async function viewKey(keyName) {
-    try {
-        const data = await api.getKeyValue(keyName);
-        alert(`Key: ${keyName}\nValue: ${data.value}\nVersion: ${data.version}`);
-    } catch (error) {
-        alert('Error: ' + error.message);
+        showToast('Error: ' + error.message, 'error');
+        saveBtn.disabled   = false;
+        cancelBtn.disabled = false;
+        saveBtn.textContent = originalText;
     }
 }
 
@@ -199,18 +309,16 @@ async function viewHistory(keyName) {
         renderHistory(data.history);
         openHistoryModal();
     } catch (error) {
-        alert('Error: ' + error.message);
+        showToast('Error: ' + error.message, 'error');
     }
 }
 
 function renderHistory(history) {
     const historyContent = document.getElementById('history-content');
-
     if (!history || history.length === 0) {
         historyContent.innerHTML = '<p class="empty-state">No history available.</p>';
         return;
     }
-
     historyContent.innerHTML = '<div class="history-content">' +
         history.map(version => `
             <div class="version-item">
@@ -225,46 +333,53 @@ function renderHistory(history) {
 }
 
 async function deleteKey(keyName) {
-    if (!confirm(`Are you sure you want to delete '${keyName}'? This will remove all versions.`)) {
-        return;
-    }
+    const confirmed = await showConfirm(
+        `Are you sure you want to delete '${keyName}'? This will remove all versions.`,
+        'Delete Key'
+    );
+    if (!confirmed) return;
 
     try {
         await api.deleteKey(keyName);
-        alert('Key deleted successfully!');
+        showToast('Key deleted successfully!', 'success');
         loadKeys();
     } catch (error) {
-        alert('Error: ' + error.message);
+        showToast('Error: ' + error.message, 'error');
     }
 }
 
 function updateCodeSample() {
     const language = document.getElementById('language-select').value;
-    const action = document.getElementById('action-select').value;
-    codeSamples.updateSample(language, action);
+    codeSamples.updateSample(language, 'read');
 }
 
 function copyCodeToClipboard() {
     const codeContent = document.getElementById('code-content').textContent;
-
     navigator.clipboard.writeText(codeContent).then(() => {
         const copyBtn = document.getElementById('copy-code-btn');
-        copyBtn.textContent = 'Copied!';
-        setTimeout(() => {
-            copyBtn.textContent = 'Copy';
-        }, 2000);
+        const original = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<img src="svg/done.svg" class="icon icon-btn" alt=""> Copied!';
+        setTimeout(() => { copyBtn.innerHTML = original; }, 2000);
     }).catch(err => {
-        alert('Failed to copy code: ' + err);
+        showToast('Failed to copy code: ' + err, 'error');
     });
 }
 
-// Modal functions
+// ── Modals ────────────────────────────────────────────────────────────────────
+
 function openModal() {
     document.getElementById('key-editor-modal').classList.add('active');
+    requestAnimationFrame(updateLineNumbers);
 }
 
 function closeModal() {
     document.getElementById('key-editor-modal').classList.remove('active');
+    const form    = document.getElementById('key-form');
+    const saveBtn = form.querySelector('button[type="submit"]');
+    const cancelBtn = form.querySelector('button[type="button"]');
+    saveBtn.disabled    = false;
+    cancelBtn.disabled  = false;
+    saveBtn.textContent = 'Save';
 }
 
 function openHistoryModal() {
@@ -275,7 +390,8 @@ function closeHistoryModal() {
     document.getElementById('history-modal').classList.remove('active');
 }
 
-// Utility functions
+// ── Utilities ────────────────────────────────────────────────────────────────
+
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -283,39 +399,79 @@ function escapeHtml(text) {
 }
 
 function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleString();
+    return new Date(dateString).toLocaleString();
 }
 
 // Make functions globally available
-window.viewKey = viewKey;
-window.editKey = editKey;
-window.viewHistory = viewHistory;
-window.deleteKey = deleteKey;
-window.closeModal = closeModal;
+window.editKey          = editKey;
+window.viewHistory      = viewHistory;
+window.deleteKey        = deleteKey;
+window.closeModal        = closeModal;
 window.closeHistoryModal = closeHistoryModal;
 
-// Theme Management
+// ── Line Number Editor ────────────────────────────────────────────────────────
+
+function updateLineNumbers() {
+    const textarea     = document.getElementById('key-value');
+    const lineNumbersEl = document.getElementById('line-numbers');
+    if (!textarea || !lineNumbersEl) return;
+
+    const style = getComputedStyle(textarea);
+    const lineHeight     = parseFloat(style.lineHeight);
+    const paddingLeft    = parseFloat(style.paddingLeft);
+    const paddingRight   = parseFloat(style.paddingRight);
+    const availableWidth = textarea.clientWidth - paddingLeft - paddingRight;
+
+    if (!updateLineNumbers._canvas) {
+        updateLineNumbers._canvas = document.createElement('canvas');
+    }
+    const ctx = updateLineNumbers._canvas.getContext('2d');
+    ctx.font = style.font;
+
+    const lines = textarea.value.split('\n');
+    let html = '';
+
+    for (let i = 0; i < lines.length; i++) {
+        const text = lines[i];
+        let visualRows = 1;
+
+        if (text.length > 0 && availableWidth > 0) {
+            let currentWidth = 0;
+            for (let j = 0; j < text.length; j++) {
+                const charWidth = ctx.measureText(text[j]).width;
+                currentWidth += charWidth;
+                if (currentWidth > availableWidth) {
+                    visualRows++;
+                    currentWidth = charWidth;
+                }
+            }
+        }
+
+        html += `<span style="height:${lineHeight * visualRows}px">${i + 1}</span>`;
+    }
+
+    lineNumbersEl.innerHTML = html;
+    syncLineNumberScroll();
+}
+
+function syncLineNumberScroll() {
+    const textarea      = document.getElementById('key-value');
+    const lineNumbersEl = document.getElementById('line-numbers');
+    if (!textarea || !lineNumbersEl) return;
+    lineNumbersEl.scrollTop = textarea.scrollTop;
+}
+
+// ── Theme ─────────────────────────────────────────────────────────────────────
+
 function initializeTheme() {
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-        updateThemeIcon(true);
-    } else {
-        document.body.classList.remove('dark-mode');
-        updateThemeIcon(false);
-    }
+    const isDark = savedTheme === 'dark';
+    document.body.classList.toggle('dark-mode', isDark);
+    document.getElementById('theme-toggle')?.classList.toggle('is-dark', isDark);
 }
 
 function toggleTheme() {
-    const isDarkMode = document.body.classList.toggle('dark-mode');
-    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-    updateThemeIcon(isDarkMode);
-}
-
-function updateThemeIcon(isDarkMode) {
-    const themeIcon = document.getElementById('theme-icon');
-    if (themeIcon) {
-        themeIcon.textContent = isDarkMode ? '☀️' : '🌙';
-    }
+    const isDark = document.body.classList.toggle('dark-mode');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    document.getElementById('theme-toggle')?.classList.toggle('is-dark', isDark);
 }
