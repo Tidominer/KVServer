@@ -46,7 +46,7 @@ class Program
 
         // Construct connection string from DbPath
         var connectionString = $"Data Source={dbPath}";
-        Console.WriteLine($"Database path: {dbPath}");
+        Console.Error.WriteLine($"Database: {dbPath}");
 
         // Setup dependency injection
         var serviceProvider = new ServiceCollection()
@@ -63,6 +63,11 @@ class Program
             .AddTransient<ListStoragesCommand>()
             .AddTransient<DeleteStorageCommand>()
             .AddTransient<RegenerateTokenCommand>()
+            .AddTransient<KeyListCommand>()
+            .AddTransient<KeyGetCommand>()
+            .AddTransient<KeySetCommand>()
+            .AddTransient<KeyDeleteCommand>()
+            .AddTransient<KeyHistoryCommand>()
             .BuildServiceProvider();
 
         // Ensure database is created
@@ -73,6 +78,8 @@ class Program
         // Setup command parser
         var parser = new CommandLineParser();
         parser.RegisterCommand("storage", new StorageCommandParser(serviceProvider));
+        parser.RegisterCommand("token", new TokenCommandParser(serviceProvider));
+        parser.RegisterCommand("key", new KeyCommandParser(serviceProvider));
 
         // Execute command
         try

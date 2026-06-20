@@ -62,6 +62,17 @@ public class KeyService : IKeyService
         return key;
     }
 
+    public async Task<(Key Key, bool Created)> UpsertKeyAsync(int storageId, string keyName, string value, string createdBy)
+    {
+        if (await _keyRepository.ExistsAsync(storageId, keyName))
+        {
+            var updated = await UpdateKeyAsync(storageId, keyName, value, createdBy);
+            return (updated!, false);
+        }
+        var created = await CreateKeyAsync(storageId, keyName, value, createdBy);
+        return (created, true);
+    }
+
     public async Task<Key?> UpdateKeyAsync(int storageId, string keyName, string value, string createdBy)
     {
         // Validate storage exists

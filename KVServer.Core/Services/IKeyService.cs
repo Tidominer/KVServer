@@ -5,6 +5,7 @@ namespace KVServer.Core.Services;
 public interface IKeyService
 {
     Task<Key> CreateKeyAsync(int storageId, string keyName, string value, string createdBy);
+    Task<(Key Key, bool Created)> UpsertKeyAsync(int storageId, string keyName, string value, string createdBy);
     Task<Key?> UpdateKeyAsync(int storageId, string keyName, string value, string createdBy);
     Task<string?> GetKeyValueAsync(int storageId, string keyName, string token);
     Task<IEnumerable<Key>> GetKeysByStorageIdAsync(int storageId);

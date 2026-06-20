@@ -14,26 +14,30 @@ public class ListStoragesCommand : ICommand
 
     public async Task<int> ExecuteAsync(string[] args)
     {
+        if (args.Length > 0 && args[0].ToLowerInvariant() is "help" or "--help" or "-h")
+        {
+            ShowHelp();
+            return 0;
+        }
+
         try
         {
-            var storages = await _storageService.GetAllStoragesAsync();
-            var storageList = storages.ToList();
+            var storages = (await _storageService.GetAllStoragesAsync()).ToList();
 
-            if (!storageList.Any())
+            if (storages.Count == 0)
             {
                 Console.WriteLine("No storages found.");
                 return 0;
             }
 
-            Console.WriteLine("Available Storages:");
-            Console.WriteLine();
+            Console.WriteLine($"{"ID",-4}  {"Name",-30}  {"Created",-20}  Token");
+            Console.WriteLine(new string('-', 90));
 
-            foreach (var storage in storageList)
-            {
-                Console.WriteLine($"ID: {storage.Id} | Name: {storage.Name} | Created: {storage.CreatedAt:yyyy-MM-dd HH:mm:ss}");
-                Console.WriteLine($"     Token: {storage.AccessToken}");
-                Console.WriteLine();
-            }
+            foreach (var s in storages)
+                Console.WriteLine($"{s.Id,-4}  {s.Name,-30}  {s.CreatedAt:yyyy-MM-dd HH:mm:ss}  {s.AccessToken}");
+
+            Console.WriteLine();
+            Console.WriteLine($"{storages.Count} storage(s) total.");
 
             return 0;
         }
@@ -42,5 +46,12 @@ public class ListStoragesCommand : ICommand
             Console.Error.WriteLine($"Error: {ex.Message}");
             return 1;
         }
+    }
+
+    private static void ShowHelp()
+    {
+        Console.WriteLine("List all storages with their IDs and access tokens.");
+        Console.WriteLine();
+        Console.WriteLine("Usage: kvserver-cli storage list");
     }
 }

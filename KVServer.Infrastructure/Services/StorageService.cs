@@ -52,6 +52,16 @@ public class StorageService : IStorageService
         return storage;
     }
 
+    public async Task<Storage> UpdateStorageAsync(Storage storage)
+    {
+        return await _storageRepository.UpdateAsync(storage);
+    }
+
+    public async Task<Storage?> GetStorageByNameAsync(string name)
+    {
+        return await _storageRepository.GetByNameAsync(name);
+    }
+
     public async Task<Storage?> GetStorageByTokenAsync(string token)
     {
         return await _storageRepository.GetByTokenAsync(token);

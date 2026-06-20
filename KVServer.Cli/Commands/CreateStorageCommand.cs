@@ -14,25 +14,29 @@ public class CreateStorageCommand : ICommand
 
     public async Task<int> ExecuteAsync(string[] args)
     {
+        if (args.Length > 0 && args[0].ToLowerInvariant() is "help" or "--help" or "-h")
+        {
+            ShowHelp();
+            return 0;
+        }
+
         if (args.Length == 0)
         {
-            Console.Error.WriteLine("Error: Storage name is required");
-            Console.Error.WriteLine("Usage: kvserver-cli storage create <name>");
+            Console.Error.WriteLine("Error: Storage name is required.");
+            ShowHelp();
             return 1;
         }
 
-        var name = args[0];
-
         try
         {
-            var storage = await _storageService.CreateStorageAsync(name);
+            var storage = await _storageService.CreateStorageAsync(args[0]);
 
             Console.WriteLine("Storage created successfully!");
-            Console.WriteLine($"Name: {storage.Name}");
+            Console.WriteLine($"ID:           {storage.Id}");
+            Console.WriteLine($"Name:         {storage.Name}");
             Console.WriteLine($"Access Token: {storage.AccessToken}");
             Console.WriteLine();
-            Console.WriteLine("⚠️  Save this token securely - it won't be shown again!");
-            Console.WriteLine("   Use this token to access the storage via web UI or API.");
+            Console.WriteLine("Save this token securely — it will not be shown again.");
 
             return 0;
         }
@@ -46,5 +50,19 @@ public class CreateStorageCommand : ICommand
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
             return 1;
         }
+    }
+
+    private static void ShowHelp()
+    {
+        Console.WriteLine("Create a new storage and generate an access token.");
+        Console.WriteLine();
+        Console.WriteLine("Usage: kvserver-cli storage create <name>");
+        Console.WriteLine();
+        Console.WriteLine("Arguments:");
+        Console.WriteLine("  <name>    Name of the new storage (must be unique)");
+        Console.WriteLine();
+        Console.WriteLine("Examples:");
+        Console.WriteLine("  kvserver-cli storage create MyApp");
+        Console.WriteLine("  kvserver-cli storage create ProductionConfig");
     }
 }
