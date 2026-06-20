@@ -22,7 +22,7 @@ class Program
             .Build();
 
         // Get database path from configuration
-        var dbPath = configuration["DbPath"];
+        var dbPath = configuration["Server:DbPath"];
         if (string.IsNullOrEmpty(dbPath))
         {
             // Default to ./data/kvserver.db if not specified
