@@ -374,9 +374,8 @@ function openModal() {
 
 function closeModal() {
     document.getElementById('key-editor-modal').classList.remove('active');
-    const form    = document.getElementById('key-form');
-    const saveBtn = form.querySelector('button[type="submit"]');
-    const cancelBtn = form.querySelector('button[type="button"]');
+    const saveBtn   = document.getElementById('key-save-btn');
+    const cancelBtn = document.getElementById('key-cancel-btn');
     saveBtn.disabled    = false;
     cancelBtn.disabled  = false;
     saveBtn.textContent = 'Save';
