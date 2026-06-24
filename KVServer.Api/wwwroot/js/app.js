@@ -273,9 +273,8 @@ async function handleKeyFormSubmit(e) {
     const keyName = document.getElementById('key-name').value;
     const value   = document.getElementById('key-value').value;
 
-    const form      = document.getElementById('key-form');
-    const saveBtn   = form.querySelector('button[type="submit"]');
-    const cancelBtn = form.querySelector('button[type="button"]');
+    const saveBtn   = document.getElementById('key-save-btn');
+    const cancelBtn = document.getElementById('key-cancel-btn');
 
     saveBtn.disabled   = true;
     cancelBtn.disabled = true;
